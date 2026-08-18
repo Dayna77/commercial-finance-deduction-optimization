@@ -3,8 +3,8 @@
 > 本项目为一个可交互的在线 Case Study 展示页，专注于渠道财务（Channel Finance）中的存量扣款清理、内控体系重构（DOA 矩阵）与 Power BI 可视化看板设计。
 > An interactive web-based Case Study presentation focusing on Channel Finance backlog clearance, internal control matrix (DOA) restructuring, and Power BI visualization.
 
-👉 **[🇨🇳 点击此处预览中文版 (Live Demo - Chinese)](https://<你的GitHub用户名>.github.io/<你的仓库名>/)**  
-👉 **[🇬🇧 Click here for English Version (Live Demo - English)](https://<你的GitHub用户名>.github.io/<你的仓库名>/index_en.html)**
+👉 **[🇨🇳 点击此处预览中文版 (Live Demo - Chinese)](https://dayna77.github.io/commercial-finance-deduction-optimization/)**  
+👉 **[🇬🇧 Click here for English Version (Live Demo - English)](https://dayna77.github.io/commercial-finance-deduction-optimization/index_en.html)**
 
 ---
 
