@@ -36,6 +36,6 @@
 
 ## 👤 作者与版权说明 (Notice)
 
-* **作者**：[Your Name]
+* **作者**：Dayna77
 * **说明**：本仓库内容仅作为个人作品集 (Portfolio) 展示使用，文中数据及敏感信息均已做脱敏处理。
 * **Disclaimer**: This repository is created exclusively for portfolio demonstration. All corporate names and financial data have been anonymized.
