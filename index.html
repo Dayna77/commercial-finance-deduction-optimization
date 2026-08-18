@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GlobalTech 客户费用及异常扣款流程优化方案 | 在线可编辑 Case Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,500&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0A192F;
+    --navy-2:#112648;
+    --navy-3:#16345E;
+    --white:#FFFFFF;
+    --paper:#F6F7FA;
+    --paper-2:#EEF1F6;
+    --ink:#0F1B2D;
+    --gray:#5B6B82;
+    --gray-soft:#8B97A8;
+    --border:#E2E7EF;
+    --border-dark:#233C60;
+    --sapphire:#1E4FBF;
+    --sapphire-light:#6E93E6;
+    --sapphire-deep:#173C93;
+    --brand-red:#E60012;
+    --red:#C8372E;
+    --red-soft:#FBEAE9;
+    --amber:#E8A626;
+    --amber-soft:#FDF3DF;
+    --green:#1E8A5F;
+    --green-soft:#E7F5EE;
+    --shadow: 0 20px 50px -20px rgba(10,25,47,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Inter', sans-serif;
+    background:#05101F;
+    color:var(--ink);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .serif{font-family:'Source Serif 4', serif;}
+
+  /* 顶部编辑器工具栏 */
+  .editor-toolbar {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(10, 25, 47, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 14px;
+    border-radius: 40px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    font-size: 12px;
+  }
+  .editor-btn {
+    background: var(--sapphire);
+    color: var(--white);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+  .editor-btn:hover { background: var(--sapphire-light); transform: translateY(-1px); }
+  .editor-btn.danger { background: var(--brand-red); }
+  .editor-btn.danger:hover { background: #ff3344; }
+  .editor-btn.secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+  .editor-btn.secondary:hover { background: rgba(255,255,255,0.2); }
+
+  body.edit-mode [contenteditable="true"]:hover {
+    outline: 1.5px dashed var(--sapphire-light) !important;
+    background: rgba(30, 79, 191, 0.08) !important;
+    border-radius: 3px;
+    cursor: text;
+  }
+  body.edit-mode [contenteditable="true"]:focus {
+    outline: 2px solid var(--amber) !important;
+    background: rgba(232, 166, 38, 0.1) !important;
+    border-radius: 3px;
+  }
+
+  .stage{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(30,79,191,0.12), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(30,79,191,0.10), transparent 45%),
+      #05101F;
+    padding:2.2vh 2vw;
+  }
+  .frame{
+    position:relative;
+    width:min(94vw, 166.7vh);
+    aspect-ratio:16/9;
+    background:var(--white);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+
+  .slide{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    padding:5.2% 6.2%;
+    opacity:0; visibility:hidden;
+    transform:translateY(14px);
+    transition:opacity .5s ease, transform .5s ease, visibility .5s;
+  }
+  .slide.active{ opacity:1; visibility:visible; transform:translateY(0); }
+  .slide.dark{ background:var(--navy); color:var(--white); }
+  .slide.light{ background:var(--white); color:var(--ink); }
+
+  .slide.dark::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+    background-size:38px 38px;
+    pointer-events:none;
+  }
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px; letter-spacing:.16em; font-weight:600;
+    text-transform:uppercase;
+    color:var(--sapphire);
+  }
+  .slide.dark .eyebrow{ color:var(--amber); }
+  .eyebrow::before{ content:""; width:16px; height:1.5px; background:currentColor; display:inline-block; }
+
+  .slide-title{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:clamp(22px, 2.5vw, 34px);
+    letter-spacing:-0.01em;
+    margin-top:10px;
+    line-height:1.15;
+  }
+  .slide-sub{ margin-top:8px; font-size:13.5px; color:var(--gray); max-width:640px; line-height:1.55; }
+  .slide.dark .slide-sub{ color:#AEBBD1; }
+  .slide-body{ flex:1; margin-top:22px; min-height:0; }
+
+  .chrome{
+    position:absolute; left:0; right:0; bottom:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 6.2% 3.4%;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px; letter-spacing:.08em;
+    color:var(--gray-soft);
+    z-index:5;
+  }
+  .slide.dark .chrome{ color:#6C7E9C; }
+  .chrome .tag{ display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+  .chrome .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+  /* Cover */
+  #s1{ justify-content:center; }
+  .cover-tag{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:7px 14px;
+    border:1px solid rgba(232,166,38,0.5);
+    border-radius:999px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--amber);
+    width:fit-content;
+  }
+  .cover-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+  .cover-title{ font-family:'Source Serif 4', serif; font-weight:600; font-size:clamp(30px, 4.2vw, 54px); line-height:1.14; margin-top:26px; max-width:920px; letter-spacing:-0.01em; }
+  .cover-sub{ font-family:'Source Serif 4', serif; font-style:italic; font-weight:500; font-size:clamp(15px, 1.5vw, 19px); color:#B9C6DC; margin-top:16px; max-width:640px; }
+  .cover-rule{ width:64px; height:2px; background:var(--amber); margin-top:34px; }
+  .cover-meta{ position:absolute; left:6.2%; right:6.2%; bottom:8%; display:flex; justify-content:space-between; align-items:flex-end; color:#8C9CB8; }
+  .cover-meta .item .label{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#5E7095; margin-bottom:6px; }
+  .cover-meta .item .value{ font-size:13.5px; color:#E7ECF5; font-weight:500;}
+  .cover-index{ position:absolute; top:5.5%; right:6.2%; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#5E7095; letter-spacing:.1em; text-align:right; }
+
+  /* Pillars */
+  .pillars{ display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; height:100%; }
+  .pillar-card{ background:var(--paper); border:1px solid var(--border); border-radius:10px; padding:24px 22px; display:flex; flex-direction:column; position:relative; }
+  .pillar-card .num{ font-family:'Source Serif 4', serif; font-style:italic; font-weight:600; font-size:34px; color:var(--sapphire); opacity:.85; line-height:1; }
+  .pillar-card .p-title{ font-family:'Source Serif 4', serif; font-weight:600; font-size:17px; margin-top:14px; color:var(--ink); }
+  .pillar-card .p-desc{ font-size:12.8px; color:var(--gray); line-height:1.65; margin-top:10px; }
+  .pillar-card .p-desc b{ color:var(--red); font-weight:700; }
+  .pillar-card .p-flow{ margin-top:auto; padding-top:16px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-family:'IBM Plex Mono', monospace; font-size:10.5px; }
+  .flow-chip{ padding:4px 9px; border-radius:5px; background:var(--white); border:1px solid var(--border); color:var(--sapphire-deep); font-weight:600; }
+  .flow-arrow{ color:var(--gray-soft); font-size:12px; }
+
+  /* Two Col */
+  .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap:20px; height:100%; }
+  .rule-card{ border:1px solid var(--border); border-radius:10px; padding:18px; background:var(--white); margin-bottom:14px; }
+  .rule-card .rc-head{ display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.1em; color:var(--sapphire); text-transform:uppercase; font-weight:700; margin-bottom:8px; }
+  .rule-card .rc-head .sq{ width:7px; height:7px; background:var(--sapphire); border-radius:2px; }
+  .rule-card h4{ font-family:'Source Serif 4', serif; font-size:15px; font-weight:600; margin-bottom:6px; }
+  .rule-card p{ font-size:12.3px; color:var(--gray); line-height:1.6; }
+
+  .path-table{ width:100%; border-collapse:separate; border-spacing:0 10px; }
+  .path-table tr{ background:var(--paper); }
+  .path-table td{ padding:13px 14px; font-size:12.2px; vertical-align:top; }
+  .path-table td:first-child{ border-radius:8px 0 0 8px; width:30%; }
+  .path-table td:last-child{ border-radius:0 8px 8px 0; }
+  .path-cond{ font-weight:700; font-family:'IBM Plex Mono', monospace; font-size:11px; }
+  .path-desc{ color:var(--gray); line-height:1.5; }
+  .path-tag{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; margin-bottom:5px; }
+  .tag-green{ background:var(--green-soft); color:var(--green); }
+  .tag-blue{ background:#E7EEFC; color:var(--sapphire-deep); }
+  .tag-red{ background:var(--red-soft); color:var(--red); }
+  .tag-amber{ background:var(--amber-soft); color:#9A6B0E; }
+  .path-table tr[data-r="red"] td:first-child{ border-left:3px solid var(--red); }
+  .path-table tr[data-r="green"] td:first-child{ border-left:3px solid var(--green); }
+  .path-table tr[data-r="blue"] td:first-child{ border-left:3px solid var(--sapphire); }
+  .path-table tr[data-r="amber"] td:first-child{ border-left:3px solid var(--amber); }
+
+  /* Locks & DOA */
+  .locks{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:22px; }
+  .lock-card{ background:var(--navy-2); border:1px solid var(--border-dark); border-radius:10px; padding:18px; }
+  .lock-card .lk-top{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .lock-card .lk-num{ width:26px; height:26px; border-radius:50%; border:1px solid var(--amber); color:var(--amber); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; flex-shrink:0; }
+  .lock-card h4{ font-family:'Source Serif 4', serif; font-size:14.5px; font-weight:600; color:var(--white); }
+  .lock-card p{ font-size:12px; color:#AEBBD1; line-height:1.6; }
+
+  .doa-wrap{ background:var(--white); border-radius:10px; padding:18px 20px 14px; }
+  .doa-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .doa-head .dh-title{ font-family:'Source Serif 4', serif; font-weight:600; font-size:14.5px; color:var(--ink); }
+  .doa-head .dh-note{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--gray); }
+  table.doa{ width:100%; border-collapse:collapse; }
+  table.doa th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray-soft); padding:6px 10px; border-bottom:1px solid var(--border); font-weight:600; }
+  table.doa td{ padding:9px 10px; font-size:12px; border-bottom:1px solid var(--border); color:var(--ink); }
+  .badge-auto{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; background:var(--green-soft); color:var(--green); }
+  .badge-manual{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; background:var(--red-soft); color:var(--red); }
+
+  /* Dashboard */
+  .bi-shell{ background:var(--paper); border:1px solid var(--border); border-radius:10px; height:100%; display:flex; flex-direction:column; overflow:hidden; }
+  .bi-topbar{ background:var(--navy); color:#DDE6F5; padding:8px 16px; display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono', monospace; font-size:10px; }
+  .bi-dot{ width:7px; height:7px; border-radius:50%; }
+  .bi-topbar .bi-dots{ display:flex; gap:5px; margin-right:8px; }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:14px 16px 6px; }
+  .kpi-card{ background:var(--white); border:1px solid var(--border); border-radius:8px; padding:12px 14px; border-top:3px solid var(--sapphire); }
+  .kpi-label{ font-family:'IBM Plex Mono', monospace; font-size:9.5px; color:var(--gray); text-transform:uppercase; }
+  .kpi-value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:21px; margin-top:5px; color:var(--ink); }
+  .kpi-value span{ font-size:12px; color:var(--gray-soft); }
+  .kpi-delta{ font-size:10.5px; margin-top:4px; font-weight:600; }
+
+  .chart-row{ display:grid; grid-template-columns:1.15fr 1fr; gap:12px; padding:8px 16px; flex:1; min-height:0; }
+  .chart-panel{ background:var(--white); border:1px solid var(--border); border-radius:8px; padding:10px 14px 8px; display:flex; flex-direction:column; min-height:0; }
+  .chart-panel .cp-title{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--gray); text-transform:uppercase; margin-bottom:2px; font-weight:600; }
+  .chart-panel svg{ flex:1; width:100%; height:100%; }
+
+  .bottom-row{ display:grid; grid-template-columns:1fr 1.2fr; gap:12px; padding:0 16px 14px; height:34%; }
+  .heat-panel, .list-panel{ background:var(--white); border:1px solid var(--border); border-radius:8px; padding:10px 14px; overflow:hidden; display:flex; flex-direction:column; }
+  .heat-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:6px; flex:1; }
+  .heat-cell{ border-radius:5px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'IBM Plex Mono', monospace; padding:4px 2px; }
+  .heat-cell .hc-band{ font-size:8.5px; opacity:.85; }
+  .heat-cell .hc-val{ font-size:12px; font-weight:700; }
+
+  table.detail{ width:100%; border-collapse:collapse; margin-top:4px; font-size:10.5px; }
+  table.detail th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase; color:var(--gray-soft); padding:4px 6px; border-bottom:1px solid var(--border); }
+  table.detail td{ padding:5px 6px; border-bottom:1px solid var(--paper-2); color:var(--ink); }
+  table.detail td.num{ font-family:'IBM Plex Mono', monospace; text-align:right; }
+
+  .nav-ui{
+    position:fixed; left:0; right:0; bottom:1.6vh;
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    z-index:50;
+  }
+  .nav-btn{
+    width:34px; height:34px; border-radius:50%;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16);
+    color:#DCE5F5; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:.15s; backdrop-filter:blur(6px);
+  }
+  .nav-btn:hover{ background:rgba(255,255,255,0.18); }
+  .nav-dots{ display:flex; gap:8px; align-items:center; }
+  .nav-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.25); cursor:pointer; transition:.2s; }
+  .nav-dot.active{ background:var(--amber); width:20px; border-radius:4px; }
+  .nav-count{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#8C9CB8; margin-left:6px; min-width:44px; }
+
+  @media print {
+    @page { size: 16in 9in landscape; margin: 0; }
+    html, body { background: none !important; overflow: visible !important; height: auto !important; }
+    .editor-toolbar, .nav-ui { display: none !important; }
+    .stage { position: static !important; background: none !important; padding: 0 !important; display: block !important; }
+    .frame { width: 100vw !important; height: 100vh !important; aspect-ratio: auto !important; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; }
+    .slide { position: relative !important; opacity: 1 !important; visibility: visible !important; transform: none !important; page-break-after: always !important; break-after: page !important; height: 100vh !important; width: 100vw !important; box-sizing: border-box !important; }
+  }
+</style>
+</head>
+<body class="edit-mode">
+
+<div class="editor-toolbar">
+  <button class="editor-btn secondary" id="toggleEditBtn" onclick="toggleEditMode()">✏️ 模式：编辑中</button>
+  <button class="editor-btn danger" onclick="exportPDF()">📄 导出为 PDF</button>
+  <button class="editor-btn secondary" onclick="alert('提示：在打印设置中勾选【背景图形】(Background graphics)，边距设为【无】，即可导出完整 PDF！')">💡 导出技巧</button>
+</div>
+
+<div class="stage">
+  <div class="frame" id="frame">
+
+    <!-- SLIDE 1 -->
+    <section class="slide dark active" id="s1">
+      <div class="cover-index" contenteditable="true">CF &mdash; 2026 &mdash; 001<br>CHANNEL FINANCE</div>
+      <div class="cover-tag" contenteditable="true"><span class="dot" style="background:#E60012;"></span>Case Study Presentation</div>
+      <h1 class="cover-title" contenteditable="true">GlobalTech 客户费用及异常扣款流程优化方案</h1>
+      <p class="cover-sub" contenteditable="true">从“存量核销”到“内控重构”与“数字化赋能”的闭环实践</p>
+      <div class="cover-rule" style="background: linear-gradient(90deg, #E60012 0%, rgba(230, 0, 18, 0.2) 100%); height:3px;"></div>
+      <div class="cover-meta">
+        <div class="item">
+          <div class="label" contenteditable="true">汇报人</div>
+          <div class="value" contenteditable="true" style="font-weight:700; color:#fff;">[Your Name / Candidate]</div>
+        </div>
+        <div class="item" style="text-align:right;">
+          <div class="label" contenteditable="true">Confidential</div>
+          <div class="value" contenteditable="true" style="color:#E60012; font-weight:600;">Portfolio Purpose Only</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2 -->
+    <section class="slide light" id="s2">
+      <div class="eyebrow" contenteditable="true">Executive Summary</div>
+      <h2 class="slide-title" contenteditable="true">执行摘要</h2>
+      <p class="slide-sub" contenteditable="true">三个核心命题，构成本方案从问题诊断到长效机制的完整叙事。</p>
+      <div class="slide-body">
+        <div class="pillars">
+          <div class="pillar-card">
+            <div class="num" style="color:#E60012;" contenteditable="true">01</div>
+            <div class="p-title" contenteditable="true">核心诊断</div>
+            <div class="p-desc" contenteditable="true"><b>145 万欧</b>扣款积压暴露了“跨系统数据断链、缺乏事前防错、权责不清晰”的深层风险，而非单一执行问题。</div>
+            <div class="p-flow">
+              <span class="flow-chip" contenteditable="true">数据断链</span><span class="flow-arrow">＋</span>
+              <span class="flow-chip" contenteditable="true">无防重</span><span class="flow-arrow">＋</span>
+              <span class="flow-chip" contenteditable="true">权责不清</span>
+            </div>
+          </div>
+          <div class="pillar-card">
+            <div class="num" contenteditable="true">02</div>
+            <div class="p-title" contenteditable="true">战略路径</div>
+            <div class="p-desc" contenteditable="true">坚持“Phase 1 存量止血 ➔ Phase 2 流程标准化 ➔ Phase 3 数字化赋能”的三段式治理节奏，先止血、再固本、后强基。</div>
+            <div class="p-flow">
+              <span class="flow-chip" contenteditable="true">Quick Win</span><span class="flow-arrow">➔</span>
+              <span class="flow-chip" contenteditable="true">Process Control</span><span class="flow-arrow">➔</span>
+              <span class="flow-chip" contenteditable="true">Visualization</span>
+            </div>
+          </div>
+          <div class="pillar-card">
+            <div class="num" style="color:var(--green);" contenteditable="true">03</div>
+            <div class="p-title" contenteditable="true">预期效益</div>
+            <div class="p-desc" contenteditable="true">显著降低 <b>DSO</b> 与坏账风险，提升 Trade Spend ROI，释放管理层精力聚焦高价值决策。</div>
+            <div class="p-flow">
+              <span class="flow-chip" contenteditable="true">DSO ↓</span>
+              <span class="flow-chip" contenteditable="true">ROI ↑</span>
+              <span class="flow-chip" contenteditable="true">管理精力 ↑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chrome"><span class="tag"><span class="dot"></span>GlobalTech Channel Finance</span><span>02 / 06</span></div>
+    </section>
+
+    <!-- SLIDE 3 -->
+    <section class="slide light" id="s3">
+      <div class="eyebrow" contenteditable="true">Module A &middot; Quick Win</div>
+      <h2 class="slide-title" contenteditable="true">145 万欧存量扣款清理与审计凭证链</h2>
+      <p class="slide-sub" contenteditable="true">以数据主键拉通四大系统，精准识别 5 大扣款归因与 Audit Trail，四条路径分类核销。</p>
+      <div class="slide-body">
+        <div class="two-col">
+          <div>
+            <div style="font-family:'IBM Plex Mono'; font-size:11px; font-weight:700; color:var(--sapphire); margin-bottom:8px;" contenteditable="true">📌 扣款归因与 Audit Trail 凭证要求</div>
+            <table class="detail" style="font-size:11px; background:var(--paper); border-radius:8px; padding:6px;">
+              <tr style="background:var(--paper-2);"><th contenteditable="true">扣款类型</th><th contenteditable="true">核心审计凭证 (Audit Trail)</th><th contenteditable="true">归因部门</th></tr>
+              <tr><td contenteditable="true"><b>价格保护/价差</b></td><td contenteditable="true">特批价格表 (Price List) + 发票</td><td contenteditable="true">Sales / MKT</td></tr>
+              <tr><td contenteditable="true"><b>促销费/返利</b></td><td contenteditable="true">唯一 Promo ID + 活动 ROI 评估表</td><td contenteditable="true">Channel MKT</td></tr>
+              <tr><td contenteditable="true"><b>物流罚款/短少</b></td><td contenteditable="true">签收单 (POD) + 承运商索赔协议</td><td contenteditable="true">Supply Chain</td></tr>
+              <tr><td contenteditable="true"><b>售后/RMA</b></td><td contenteditable="true">退货授权 (RMA) + 仓库入库凭证</td><td contenteditable="true">After-Sales</td></tr>
+              <tr><td contenteditable="true"><b>无头扣款</b></td><td contenteditable="true">客户 Debit Note + 银行水单</td><td contenteditable="true">Finance (待查)</td></tr>
+            </table>
+
+            <div class="rule-card" style="margin-top:12px; padding:12px; border-left:3px solid #E60012;">
+              <div class="rc-head" contenteditable="true"><span class="sq" style="background:#E60012;"></span>数据拉通主键</div>
+              <p style="font-size:11.5px;" contenteditable="true">以 <b>Customer ID + Invoice ID + SKU</b> 为统一主键，自动匹配 SAP、Forecast 与 Policy 数据。</p>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family:'IBM Plex Mono'; font-size:11px; font-weight:700; color:var(--sapphire); margin-bottom:8px;" contenteditable="true">🎯 4 分类处理与追讨路径</div>
+            <table class="path-table">
+              <tr data-r="green">
+                <td><span class="path-tag tag-green" contenteditable="true">路径 1</span><br><span class="path-cond" contenteditable="true">有审批 + 有计提</span></td>
+                <td class="path-desc" contenteditable="true">凭证完整且匹配，<b>直接自动核销</b>，释放财务账目敞口。</td>
+              </tr>
+              <tr data-r="blue">
+                <td><span class="path-tag tag-blue" contenteditable="true">路径 2</span><br><span class="path-cond" contenteditable="true">有审批 + 无计提</span></td>
+                <td class="path-desc" contenteditable="true">合规但未入账，<b>补充计提后核销</b>，调整当期 P&amp;L 匹配度。</td>
+              </tr>
+              <tr data-r="red">
+                <td><span class="path-tag tag-red" style="background:#E60012; color:#fff;" contenteditable="true">路径 3</span><br><span class="path-cond" contenteditable="true">无审批 + 大额</span></td>
+                <td class="path-desc" contenteditable="true">发起正式追讨，限期 <b>14 天</b>响应，逾期触发 <b>Order Release 冻结</b>。</td>
+              </tr>
+              <tr data-r="amber">
+                <td><span class="path-tag tag-amber" contenteditable="true">路径 4</span><br><span class="path-cond" contenteditable="true">无审批 + 小额</span></td>
+                <td class="path-desc" contenteditable="true">走 <b>De Minimis</b> 极小额豁免，计入营业外支出，高效关单止损。</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="chrome"><span class="tag"><span class="dot"></span>GlobalTech Channel Finance</span><span>03 / 06</span></div>
+    </section>
+
+    <!-- SLIDE 4 -->
+    <section class="slide dark" id="s4">
+      <div class="eyebrow" contenteditable="true">Module B &middot; Process Control</div>
+      <h2 class="slide-title" contenteditable="true">内控重构与双线 DOA 授权矩阵</h2>
+      <p class="slide-sub" contenteditable="true">全生命周期设置“三道锁”，并以 Sales/Finance 双线授权矩阵实现精细化分权。</p>
+      <div class="slide-body">
+        <div class="locks">
+          <div class="lock-card" style="border-top:2px solid #E60012;">
+            <div class="lk-top"><div class="lk-num" style="color:#E60012;">01</div><h4 contenteditable="true">源头锁</h4></div>
+            <p contenteditable="true">唯一 <b style="color:#fff">Promo ID</b> + 客户/时间/SKU 四要素，系统自动查重预警，杜绝重复立项。</p>
+          </div>
+          <div class="lock-card">
+            <div class="lk-top"><div class="lk-num">02</div><h4 contenteditable="true">财务锁</h4></div>
+            <p contenteditable="true">预提上限硬性锁定（<b style="color:#fff">Accrual Ceiling</b>），超预算申请自动拦截。</p>
+          </div>
+          <div class="lock-card">
+            <div class="lk-top"><div class="lk-num">03</div><h4 contenteditable="true">核销锁</h4></div>
+            <p contenteditable="true">一单一次闭环核销，完结后系统自动关闭对应 Promo ID，防止二次套扣。</p>
+          </div>
+        </div>
+
+        <div class="doa-wrap">
+          <div class="doa-head">
+            <div class="dh-title" contenteditable="true">DOA 授权控制矩阵 &middot; Sales &amp; Finance Dual-Control Matrix</div>
+            <div class="dh-note" contenteditable="true">80% 预算内小额 &rarr; 系统自动化流转；20% 大额/预算外 &rarr; 双线人工特批</div>
+          </div>
+          <table class="doa">
+            <tr><th contenteditable="true">场景 / 金额门槛</th><th contenteditable="true">业务审批 (Sales Line)</th><th contenteditable="true">财务控制 (Finance Line)</th><th contenteditable="true">系统控制机制</th></tr>
+            <tr>
+              <td contenteditable="true"><b>预算内 &le; &euro;5,000</b></td>
+              <td contenteditable="true">Sales Rep / Team Lead</td>
+              <td contenteditable="true"><span style="color:var(--gray-soft);">系统规则自动校验</span></td>
+              <td><span class="badge-auto" contenteditable="true">全自动 Pass</span></td>
+            </tr>
+            <tr>
+              <td contenteditable="true"><b>预算内 &euro;5,000 &ndash; &euro;50,000</b></td>
+              <td contenteditable="true">Regional Sales Director (RSM)</td>
+              <td contenteditable="true">Channel Finance Manager</td>
+              <td><span class="badge-auto" contenteditable="true">预提匹配校验</span></td>
+            </tr>
+            <tr>
+              <td contenteditable="true"><b>预算内 &gt; &euro;50,000 或 预算外 &le; &euro;20,000</b></td>
+              <td contenteditable="true">Country Sales Head</td>
+              <td contenteditable="true">Senior Finance Director</td>
+              <td><span class="badge-manual" style="background:rgba(230,0,18,0.15); color:#ff6b6b; border:1px solid rgba(230,0,18,0.3);" contenteditable="true">需 Variance 说明</span></td>
+            </tr>
+            <tr>
+              <td contenteditable="true"><b>预算外 &gt; &euro;20,000</b></td>
+              <td contenteditable="true">General Manager (GM)</td>
+              <td contenteditable="true">VP Finance / CFO</td>
+              <td><span class="badge-manual" style="background:#E60012; color:#fff;" contenteditable="true">GM + CFO 联签特批</span></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="chrome"><span class="tag"><span class="dot"></span>GlobalTech Channel Finance</span><span>04 / 06</span></div>
+    </section>
+
+    <!-- SLIDE 5 -->
+    <section class="slide light" id="s5">
+      <div class="eyebrow" contenteditable="true">Module C &middot; Visualization</div>
+      <h2 class="slide-title" contenteditable="true">Power BI 高管看板架构</h2>
+      <p class="slide-sub" contenteditable="true">同一份数据，服务 GM 的商业视角与 FM 的风控视角，实现“一屏双读”。</p>
+      <div class="slide-body" style="margin-top:14px;">
+        <div class="bi-shell">
+          <div class="bi-topbar">
+            <div class="bi-dots">
+              <span class="bi-dot" style="background:#E60012"></span>
+              <span class="bi-dot" style="background:#E8A626"></span>
+              <span class="bi-dot" style="background:#3FBF7F"></span>
+            </div>
+            <span class="bi-title" contenteditable="true">GlobalTech Channel Finance &middot; Deduction Control Dashboard.pbix</span>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi-card" style="border-top:3px solid #E60012; background:#FFF5F5;">
+              <div class="kpi-label" contenteditable="true">待清理扣款总额</div>
+              <div class="kpi-value" style="color:#E60012;" contenteditable="true">&euro;1.45<span>M</span></div>
+              <div class="kpi-delta" style="color:#E60012;" contenteditable="true">▲ 高风险敞口</div>
+            </div>
+            <div class="kpi-card amber">
+              <div class="kpi-label" contenteditable="true">费用占收入比</div>
+              <div class="kpi-value" contenteditable="true">6.5<span>%</span></div>
+              <div class="kpi-delta" contenteditable="true">▲ 0.8pt vs LY</div>
+            </div>
+            <div class="kpi-card red">
+              <div class="kpi-label" contenteditable="true">利润侵蚀影响</div>
+              <div class="kpi-value" contenteditable="true">&euro;0.38<span>M</span></div>
+              <div class="kpi-delta" contenteditable="true">▲ 未清理部分</div>
+            </div>
+            <div class="kpi-card green">
+              <div class="kpi-label" contenteditable="true">扣款同比变动</div>
+              <div class="kpi-value" contenteditable="true">-22<span>%</span></div>
+              <div class="kpi-delta" style="color:var(--green);" contenteditable="true">▼ 清理见效</div>
+            </div>
+          </div>
+
+          <div class="chart-row">
+            <div class="chart-panel">
+              <div class="cp-title" contenteditable="true">145 万欧清理进度瀑布图 &middot; GM View</div>
+              <svg viewBox="0 0 460 150" preserveAspectRatio="none">
+                <line x1="0" y1="130" x2="460" y2="130" stroke="#E2E7EF" stroke-width="1"/>
+                <rect x="10" y="20" width="60" height="110" fill="#0A192F"/>
+                <rect x="90" y="55" width="60" height="45" fill="#1E4FBF"/>
+                <rect x="170" y="80" width="60" height="35" fill="#1E4FBF"/>
+                <rect x="250" y="95" width="60" height="35" fill="#1E4FBF"/>
+                <rect x="330" y="20" width="60" height="75" fill="#E60012"/>
+                <text x="40" y="14" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">€1.45M</text>
+                <text x="120" y="49" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">-€0.42M</text>
+                <text x="200" y="74" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">-€0.35M</text>
+                <text x="280" y="89" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">-€0.30M</text>
+                <text x="360" y="14" font-size="9" fill="#E60012" font-weight="700" text-anchor="middle" font-family="IBM Plex Mono">€0.38M</text>
+                <text x="40" y="144" font-size="8.5" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">初始存量</text>
+                <text x="120" y="144" font-size="8.5" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">直接核销</text>
+                <text x="200" y="144" font-size="8.5" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">补提核销</text>
+                <text x="280" y="144" font-size="8.5" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">De Minimis</text>
+                <text x="360" y="144" font-size="8.5" fill="#E60012" font-weight="700" text-anchor="middle" font-family="IBM Plex Mono">待清理</text>
+              </svg>
+            </div>
+            <div class="chart-panel">
+              <div class="cp-title" contenteditable="true">欧洲各渠道 Trade Spend ROI</div>
+              <svg viewBox="0 0 300 150" preserveAspectRatio="none">
+                <line x1="0" y1="130" x2="300" y2="130" stroke="#E2E7EF" stroke-width="1"/>
+                <rect x="15" y="45" width="34" height="85" rx="2" fill="#1E4FBF"/>
+                <rect x="70" y="70" width="34" height="60" rx="2" fill="#1E4FBF"/>
+                <rect x="125" y="25" width="34" height="105" rx="2" fill="#3FBF7F"/>
+                <rect x="180" y="90" width="34" height="40" rx="2" fill="#E60012"/>
+                <rect x="235" y="55" width="34" height="75" rx="2" fill="#1E4FBF"/>
+                <text x="32" y="40" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">3.1x</text>
+                <text x="87" y="65" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">2.2x</text>
+                <text x="142" y="20" font-size="9" fill="#1E8A5F" text-anchor="middle" font-family="IBM Plex Mono">4.6x</text>
+                <text x="197" y="85" font-size="9" fill="#E60012" font-weight="700" text-anchor="middle" font-family="IBM Plex Mono">1.4x</text>
+                <text x="252" y="50" font-size="9" fill="#5B6B82" text-anchor="middle" font-family="IBM Plex Mono">2.8x</text>
+                <text x="32" y="144" font-size="8" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">National KA</text>
+                <text x="87" y="144" font-size="8" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">Disti</text>
+                <text x="142" y="144" font-size="8" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">E-Comm</text>
+                <text x="197" y="144" font-size="8" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">Regional</text>
+                <text x="252" y="144" font-size="8" fill="#8B97A8" text-anchor="middle" font-family="IBM Plex Mono">B2B</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bottom-row">
+            <div class="heat-panel">
+              <div class="cp-title" contenteditable="true">账龄分层热力矩阵 &middot; FM View</div>
+              <div class="heat-grid">
+                <div class="heat-cell" style="background:#E7F5EE;color:#1E8A5F;"><span class="hc-band" contenteditable="true">0&ndash;30 天</span><span class="hc-val" contenteditable="true">€210K</span></div>
+                <div class="heat-cell" style="background:#FDF3DF;color:#9A6B0E;"><span class="hc-band" contenteditable="true">31&ndash;60 天</span><span class="hc-val" contenteditable="true">€310K</span></div>
+                <div class="heat-cell" style="background:#FBEAE9;color:#C8372E;"><span class="hc-band" contenteditable="true">61&ndash;90 天</span><span class="hc-val" contenteditable="true">€410K</span></div>
+                <div class="heat-cell" style="background:#E60012;color:#fff;"><span class="hc-band" contenteditable="true">&gt;90 天</span><span class="hc-val" contenteditable="true">€520K</span></div>
+              </div>
+            </div>
+            <div class="list-panel">
+              <div class="cp-title" contenteditable="true">追查明细表 &middot; 重点客户集中度</div>
+              <table class="detail">
+                <tr><th contenteditable="true">重点客户 (Key Accounts)</th><th contenteditable="true">账龄</th><th style="text-align:right" contenteditable="true">金额</th><th contenteditable="true">状态</th></tr>
+                <tr><td contenteditable="true"><b>Retailer Alpha (Consumer Electronics)</b></td><td style="color:#E60012;" contenteditable="true">124 天</td><td class="num" contenteditable="true">&euro;112,000</td><td style="background:#FFF5F5; color:#E60012;" contenteditable="true">法务/追讨中</td></tr>
+                <tr><td contenteditable="true"><b>Retailer Beta (Department Store)</b></td><td style="color:#E60012;" contenteditable="true">108 天</td><td class="num" contenteditable="true">&euro;95,000</td><td style="background:#FFF5F5; color:#E60012;" contenteditable="true">限期补凭证</td></tr>
+                <tr><td contenteditable="true"><b>E-Commerce Partner Gamma</b></td><td contenteditable="true">76 天</td><td class="num" contenteditable="true">&euro;68,000</td><td contenteditable="true">补计提中</td></tr>
+                <tr><td contenteditable="true"><b>Retailer Delta</b></td><td contenteditable="true">52 天</td><td class="num" contenteditable="true">&euro;42,000</td><td contenteditable="true">待核销关单</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chrome"><span class="tag"><span class="dot"></span>GlobalTech Channel Finance</span><span>05 / 06</span></div>
+    </section>
+
+    <!-- SLIDE 6 -->
+    <section class="slide dark" id="s6">
+      <div class="eyebrow" contenteditable="true">Roadmap &middot; Next Steps</div>
+      <h2 class="slide-title" contenteditable="true">项目落地实施路线图</h2>
+      <p class="slide-sub" contenteditable="true">分阶段稳步推进，确保 90 天内完成存量清算与新内控流程上线。</p>
+      <div class="slide-body" style="margin-top:24px;">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
+          <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; border-top:3px solid #E60012;">
+            <div style="font-family:'IBM Plex Mono'; font-size:12px; color:#E60012; font-weight:700; margin-bottom:8px;" contenteditable="true">MONTH 1 &middot; QUICK WIN</div>
+            <h4 style="color:#fff; font-size:16px; margin-bottom:12px;" contenteditable="true">存量冻结与数据拉通</h4>
+            <ul style="font-size:12px; color:var(--gray-soft); line-height:1.6; padding-left:16px;">
+              <li contenteditable="true">完成 145 万欧扣款主键匹配（SAP/Forecast）</li>
+              <li contenteditable="true">分类核销路径 1 &amp; 2，快速释放账面 Open Item</li>
+              <li contenteditable="true">向 Retailer A/B 发出第一轮正式追讨函</li>
+            </ul>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; border-top:3px solid var(--sapphire);">
+            <div style="font-family:'IBM Plex Mono'; font-size:12px; color:var(--sapphire-light); font-weight:700; margin-bottom:8px;" contenteditable="true">MONTH 2 &middot; PROCESS CONTROL</div>
+            <h4 style="color:#fff; font-size:16px; margin-bottom:12px;" contenteditable="true">双线 DOA 与三道锁上线</h4>
+            <ul style="font-size:12px; color:var(--gray-soft); line-height:1.6; padding-left:16px;">
+              <li contenteditable="true">上线 Promo ID 硬性防重与预提 Ceiling 拦截</li>
+              <li contenteditable="true">部署 Sales &amp; Finance 双线 DOA 审批流</li>
+              <li contenteditable="true">对区域 Sales 团队开展新流程内控培训</li>
+            </ul>
+          </div>
+          <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:8px; border-top:3px solid #3FBF7F;">
+            <div style="font-family:'IBM Plex Mono'; font-size:12px; color:#3FBF7F; font-weight:700; margin-bottom:8px;" contenteditable="true">MONTH 3 &middot; ENABLEMENT</div>
+            <h4 style="color:#fff; font-size:16px; margin-bottom:12px;" contenteditable="true">Power BI 看板发布</h4>
+            <ul style="font-size:12px; color:var(--gray-soft); line-height:1.6; padding-left:16px;">
+              <li contenteditable="true">Power BI 仪表盘上线，开启双周 FM/GM Review</li>
+              <li contenteditable="true">建立 Trade Spend ROI 评估机制</li>
+              <li contenteditable="true">实现扣款处理周期由 90 天缩短至 14 天</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="chrome"><span class="tag"><span class="dot"></span>GlobalTech Channel Finance</span><span>06 / 06</span></div>
+    </section>
+
+  </div>
+</div>
+
+<div class="nav-ui">
+  <div class="nav-btn" id="prevBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="nav-dots" id="navDots"></div>
+  <div class="nav-btn" id="nextBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <span class="nav-count" id="navCount">01 / 06</span>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let idx = 0;
+
+  const dotsWrap = document.getElementById('navDots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => go(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+  const countEl = document.getElementById('navCount');
+
+  function go(i){
+    idx = Math.max(0, Math.min(total - 1, i));
+    slides.forEach((s, si) => s.classList.toggle('active', si === idx));
+    dots.forEach((d, di) => d.classList.toggle('active', di === idx));
+    countEl.textContent = String(idx+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => go(idx - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => go(idx + 1));
+
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowRight','ArrowDown','PageDown'].includes(e.key)) { go(idx + 1); }
+    if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) { go(idx - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(total - 1);
+  });
+
+  let isEditingMode = true;
+  function toggleEditMode() {
+    isEditingMode = !isEditingMode;
+    document.body.classList.toggle('edit-mode', isEditingMode);
+    const editables = document.querySelectorAll('[contenteditable]');
+    editables.forEach(el => el.setAttribute('contenteditable', isEditingMode));
+    const btn = document.getElementById('toggleEditBtn');
+    btn.textContent = isEditingMode ? '✏️ 模式：编辑中' : '👁️ 模式：预览中';
+  }
+
+  function exportPDF() { window.print(); }
+  go(0);
+</script>
+</body>
+</html>
