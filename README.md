@@ -1,8 +1,5 @@
 # 📊 GlobalTech 客户费用及异常扣款流程优化方案 | Channel Expense & Deduction Optimization
 
-> 本项目源于招聘流程中的商业财务案例题，是一份方案设计，不代表本人曾在相关公司实际实施该项目。本人负责问题拆解、处理路径设计、内控框架、KPI选择、业务判断及最终审核。AI作为讨论和呈现工具，用于补充追问、语言优化、翻译及交互页面代码与布局辅助。案例中的公司名称已匿名化；除题设明确提供的数据外，Dashboard指标、审批门槛及实施效果均为说明性假设。当前Power BI页面属于Dashboard概念设计，并非已经部署的Power BI系统。
-> This project was developed from a commercial finance case exercise and represents a proposed solution rather than an implemented company project. I was responsible for the problem framing, resolution-path design, internal-control framework, KPI selection, business judgment and final review. AI was used as a discussion and presentation aid for challenge questions, wording, translation, and support with the interactive page layout and code. Company names have been anonymized. Unless explicitly provided in the case brief, dashboard metrics, approval thresholds and projected outcomes are illustrative assumptions. The Power BI page is a dashboard concept and wireframe, not a deployed Power BI solution.
-
 > 本项目为一个可交互的在线 Case Study 展示页，专注于渠道财务（Channel Finance）中的存量扣款清理、内控体系重构（DOA 矩阵）与 Power BI 可视化看板设计。
 > An interactive web-based Case Study presentation focusing on Channel Finance backlog clearance, internal control matrix (DOA) restructuring, and Power BI visualization.
 
@@ -36,6 +33,31 @@
 * **商业智能**：Power BI DAX & 数据建模逻辑
 
 ---
+
+## Methodology, AI Use & Portfolio Boundaries
+
+### My Contribution
+- 分析案例背景并拆解客户扣款、数据断链、审批和计提问题。
+- 设计四类处理路径、审计证据链、三道控制和DOA框架。
+- 选择Dashboard KPI、实施优先级并完成最终内容审核。
+- 编辑中英文版本并发布GitHub Pages。
+
+### AI-Assisted Work
+- 使用AI讨论分析框架、补充追问和检查逻辑。
+- 使用AI辅助中英文措辞、翻译和内容精简。
+- 使用AI辅助生成或调整HTML/CSS/JavaScript布局与展示代码。
+- 最终业务判断、内容取舍和审核由本人完成。
+
+### Evidence Gaps and Limitations
+- 当前未展示原始数据、清洗步骤和金额计算过程。
+- Dashboard是HTML概念设计，不是已部署的Power BI项目。
+- DOA金额门槛和部分KPI属于说明性假设。
+- 90天路线图及DSO、处理周期改善属于预期目标，不是实际实施结果。
+
+### Portfolio Boundary
+本项目源于招聘流程中的商业财务案例题，是一份 proposed
+solution，不代表本人曾在相关公司实际实施该项目。除题设明确提供
+的数据外，Dashboard指标、审批门槛和预期成果均为说明性假设。
 
 ## 👤 作者与版权说明 (Notice)
 
